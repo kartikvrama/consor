@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# VSCode
+.vscode/
+.vscode/settings.json
+
 # Distribution / packaging
 .Python
 build/
@@ -35,6 +39,9 @@ MANIFEST
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
+
+# Executables
+*.pyc
 
 # Unit test / coverage reports
 htmlcov/

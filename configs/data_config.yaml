@@ -1,0 +1,11 @@
+seed: 2007066439
+rules: class,ooe,affordance,utility
+objects_list: ./data/objects_annotated.csv
+
+json_data_folder: /home/kartik/Documents/datasets/consor_data
+json_seen_objects_timestamp: '2023_08_19_15_54_37'
+json_unseen_objects_timestamp: '2023_08_19_15_52_19'
+
+destination_folder: /home/kartik/Documents/datasets/consor_data/tensors
+container_pos_encoding_dim: 4
+obj_pos_encoding_dim: 8

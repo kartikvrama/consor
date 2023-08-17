@@ -1,0 +1,32 @@
+SYSTEM:
+  seed: 2007066439
+  device: gpu
+  num_devices: 1
+
+rules: class,ooe,affordance,utility
+
+TRAIN:
+  num_epochs: 30
+  batch_size: 64
+  lrate: 1e-3
+  wtdecay: 1e-20
+  tensor_data_folder: /home/kartik/Documents/github_projs/semantic_rearrangement_data/rearrange_ai2thor/dict_dataset/data_paired_v4_feb17/02-17-2023_model-transformer_conceptnet_seen-objs_tensors
+  data_aliasing: NA
+
+MODEL:
+  edge_feature_len: 1
+  num_heads: 2
+  num_layers: 3
+  hidden_layer_size: 256 
+  output_dimension: 64
+  dropout: 0.5
+
+LOSS:
+  loss_fn: triplet_margin
+  triplet_margin: 0.75 # 0.75
+
+TEST:
+  ckpt: /home/kartik/Documents/github_projs/semantic_rearrangement/logs/transf_embedder/logs_02-24-2023/allrules-18_42_55-307832_Feb-24-2023-epoch=19-step=37240-success_rate=1.00.pth.ckpt
+  json_data_folder: /home/kartik/Documents/github_projs/semantic_rearrangement_data/rearrange_ai2thor/dict_dataset/data_paired_v4_feb17
+  tensor_data_folder: /home/kartik/Documents/github_projs/semantic_rearrangement_data/rearrange_ai2thor/dict_dataset/data_paired_v4_feb17/02-17-2023_model-transformer_conceptnet_seen-objs_tensors
+  data_aliasing: NA

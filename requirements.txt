@@ -1,0 +1,9 @@
+numpy
+pandas
+nltk
+scikit-learn
+scipy
+matplotlib
+absl-py
+pyyaml
+pytorch-lightning
