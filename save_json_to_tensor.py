@@ -12,7 +12,7 @@ from absl import flags
 import torch
 import numpy as np
 
-from model.data_loader import ConSORDataLoader
+from consor_core.data_loader import ConSORDataLoader
 
 flags.DEFINE_string(
     "config_file_path",
