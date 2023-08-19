@@ -16,7 +16,7 @@ from consor_core.data_loader import ConSORDataLoader
 
 flags.DEFINE_string(
     "config_file_path",
-    "./data_config.yaml",
+    "./configs/data_config.yaml",
     "Path to the config file for generating tensor data.",
 )
 

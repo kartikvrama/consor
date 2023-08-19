@@ -12,10 +12,10 @@ from pytorch_metric_learning.reducers import DoNothingReducer
 from pytorch_metric_learning.losses import TripletMarginLoss, NPairsLoss
 
 import pytorch_lightning as pl
-from helper_eval import calculate_ged_lsa
+from helper_eval import calculate_scene_edit_distance_lsa
 
 
-class TransfEmbedderModule(pl.LightningModule):
+class ConSORTransformer(pl.LightningModule):
     """ConSOR Transformer Model to infer goal arrangement from a partially
     arranged initial scene."""
 
@@ -23,9 +23,9 @@ class TransfEmbedderModule(pl.LightningModule):
         self,
         layer_params,
         loss_fn,
-        batch_size,
-        lrate,
-        wt_decay,
+        batch_size=None,
+        lrate=None,
+        wt_decay=None,
         train_mode=False,
         triplet_loss_margin=None,
     ):
@@ -37,9 +37,11 @@ class TransfEmbedderModule(pl.LightningModule):
                 number of layers, and output dimension.
             loss_fn: Type of loss function to use. Currently supports
                 'triplet_margin' and 'npairs'.
-            batch_size: Batch size for training.
-            lrate: Training learning rate.
-            wt_decay: Weight decay for model training.
+            batch_size: Batch size for training or validation.
+            lrate: Training learning rate. Defaults to None when train_mode is
+                False.
+            wt_decay: Weight decay for model training. Defaults to None when
+                train_mode is False.
             train_mode: True if the model is being trained, else the model is
                 used in inference.
             triplet_loss_margin: Margin for triplet loss function. This must be
@@ -89,8 +91,8 @@ class TransfEmbedderModule(pl.LightningModule):
 
         self.batch_size = batch_size
 
-        # optimizer hyperparameters
-        if train_mode:  # if train mode
+        # optimizer hyperparameters.
+        if train_mode:
             self.optimizer_params = dict({"lrate": lrate, "wtdecay": wt_decay})
 
         # For debugging purposes only
@@ -178,7 +180,7 @@ class TransfEmbedderModule(pl.LightningModule):
                 loss_array = loss_sample.clone()
 
             else:
-                loss_array = torch.concat([loss_array, loss_sample])
+                loss_array = torch.cat([loss_array, loss_sample])
 
             start += node_len
 
@@ -272,7 +274,7 @@ class TransfEmbedderModule(pl.LightningModule):
                 mean_cidx = torch.mean(
                     pred_node_embeddings[object_indices_cidx], dim=0)
 
-                cluster_means = torch.concat([cluster_means, mean_cidx], dim=0)
+                cluster_means = torch.cat([cluster_means, mean_cidx], dim=0)
 
             query_node_embeddings = pred_node_embeddings[query_object_indices]
 
@@ -315,7 +317,7 @@ class TransfEmbedderModule(pl.LightningModule):
                 scene_pred["scene"]["table"].remove(object_name)
                 scene_pred["scene"][str(new_cidx)].append(object_name)
 
-            ged, _ = calculate_ged_lsa(scene_pred, json_scene["goal"])
+            ged, _ = calculate_scene_edit_distance_lsa(scene_pred, json_scene["goal"])
 
             batch_predictions[save_key] = dict(
                 {
@@ -334,7 +336,7 @@ class TransfEmbedderModule(pl.LightningModule):
         else:
             return batch_predictions, batch_ed
 
-    def validation_step(self, val_batches, batch_idx):
+    def validation_step(self, val_batches, batch_idx=None):
         """Performs evaluation on the validation data.
 
         Args:
@@ -403,7 +405,7 @@ class TransfEmbedderModule(pl.LightningModule):
                     val_loss_array = val_loss_sample.clone()
 
                 else:
-                    val_loss_array = torch.concat(
+                    val_loss_array = torch.cat(
                         [val_loss_array, val_loss_sample])
 
                 # list of graph objects.
@@ -430,10 +432,10 @@ class TransfEmbedderModule(pl.LightningModule):
                     object_indices_cidx = torch.nonzero(
                         initial_cluster_asgns == cidx)
                     mean_cidx = torch.mean(
-                        pred_node_embeddings[object_indices_cidx], dim=0
+                        pred_node_embeddings[object_indices_cidx],dim=0
                     )
 
-                    cluster_means = torch.concat(
+                    cluster_means = torch.cat(
                         [cluster_means, mean_cidx], dim=0)
 
                 query_node_embeddings = pred_node_embeddings[query_object_indices]
@@ -466,7 +468,8 @@ class TransfEmbedderModule(pl.LightningModule):
                     scene_pred["scene"]["table"].remove(object_name)
                     scene_pred["scene"][str(new_cidx)].append(object_name)
 
-                ged, _ = calculate_ged_lsa(scene_pred, json_scene["goal"])
+                ged, _ = calculate_scene_edit_distance_lsa(
+                    scene_pred, json_scene["goal"])
 
                 # For calculating success rate.
                 if ged == 0:
@@ -503,7 +506,7 @@ class TransfEmbedderModule(pl.LightningModule):
             prog_bar=True,
         )
 
-    def test(self, test_batches, batch_idx):
+    def test(self, test_batches, batch_idx=None):
         """Performs evaluation on the test data.
 
         Args:
@@ -524,15 +527,17 @@ class TransfEmbedderModule(pl.LightningModule):
         # Collect test results.
         result_array = []
 
-        for (
-            batch_input,
-            batch_attention_mask,
-            batch_initial_cluster_asgns,
-            _,
-            batch_node_split,
-            objects_list,
-            scene_json_list,
-        ) in test_batches:
+        for test_batch in test_batches:
+            (
+                batch_input,
+                batch_attention_mask,
+                batch_initial_cluster_asgns,
+                _,
+                batch_node_split,
+                objects_list,
+                scene_json_list,
+            ) = test_batch
+
             # edge_adj_pred is N x N output, N is num of nodes in batch graph.
             batch_node_embeddings = self.forward(
                 batch_input, batch_attention_mask)
@@ -575,7 +580,7 @@ class TransfEmbedderModule(pl.LightningModule):
                         pred_node_embeddings[object_indices_cidx], dim=0
                     )
 
-                    cluster_means = torch.concat(
+                    cluster_means = torch.cat(
                         [cluster_means, mean_cidx], dim=0)
 
                 query_node_embeddings = pred_node_embeddings[query_object_indices]
@@ -594,8 +599,6 @@ class TransfEmbedderModule(pl.LightningModule):
 
                 # tuple of (key, scene).
                 json_key, json_scene = scene_json_list[scene_num]
-                rule = json_scene["rule"]
-
                 save_key = f"{json_key}"
 
                 scene_pred = deepcopy(json_scene["initial"])
@@ -611,16 +614,15 @@ class TransfEmbedderModule(pl.LightningModule):
                     scene_pred["scene"]["table"].remove(object_name)
                     scene_pred["scene"][str(new_cidx)].append(object_name)
 
-                ged, ged_norm = calculate_ged_lsa(
+                ged, _ = calculate_scene_edit_distance_lsa(
                     scene_pred, json_scene["goal"])
 
                 result = {
                     "data_key": save_key,
                     "objects": json_scene["objects"],
                     "rule": json_scene["rule"],
-                    "edit_distance": json_scene["edit_distance"],
-                    "ged": ged,
-                    "ged_normalized": ged_norm,
+                    "init_distance_from_goal": json_scene["edit_distance"],
+                    "sed": ged,
                 }
 
                 result_array.append(result)

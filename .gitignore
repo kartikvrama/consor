@@ -10,6 +10,10 @@ __pycache__/
 .vscode/
 .vscode/settings.json
 
+# Model and wandb logs
+logs/
+wandb/
+
 # Distribution / packaging
 .Python
 build/

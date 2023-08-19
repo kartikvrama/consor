@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 import torch
+from torch.utils.data import Dataset
 
 import semantic2thor
 from helper_eval import return_list_intersection
@@ -35,7 +36,7 @@ def return_positional_encoding_generator(max_position, d_model, min_freq=1e-4):
     return _return_pos_encoding
 
 
-class ConSORDataLoader:
+class ConSORDataLoader(Dataset):
     """Dataloader for transformer model.
 
     Attributes:
@@ -90,6 +91,11 @@ class ConSORDataLoader:
 
     def __getitem__(self, idx):
         return self.dataset_scenes[idx]
+
+    def get_feature_length(self):
+        """Returns the length of the node feature vector."""
+
+        return self.dataset_scenes[0][0].size()[1]
 
     def embed_object(self, object_name):
         """Returns the commonsense embedding of the input object.
@@ -204,7 +210,7 @@ class ConSORDataLoader:
         )
 
         # Final representation.
-        object_embeddings = torch.concatenate(
+        object_embeddings = torch.cat(
             [
                 object_embeddings_cs,
                 object_embeddings_container_pos,
@@ -267,7 +273,7 @@ class ConSORDataLoader:
         else:
             raise FileNotFoundError(f"{filepath} does not exist")
 
-        print("Feature length: ", self.dataset_scenes[0][0].size()[1])
+        print("Feature length: ", self.get_feature_length())
 
     def tensor_to_batch(self, node_embedding_list):
         """Creates a padded batch of scenes from a list of tensors.
@@ -283,7 +289,7 @@ class ConSORDataLoader:
 
         # dimensions of padded data list: 1 x max_length x embedding_dim.
         node_embedding_list_padded = [
-            torch.concatenate(
+            torch.cat(
                 [x, torch.zeros([max_length - x.shape[0], embedding_dim])], dim=0
             ).unsqueeze(0)
             for x in node_embedding_list
@@ -293,7 +299,7 @@ class ConSORDataLoader:
         # zeros = actual values, ones = padded values.
         # Syntax: https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html#torch.nn.Transformer.
         attention_mask = [
-            torch.concatenate(
+            torch.cat(
                 [
                     torch.zeros([1, x.shape[0]]),
                     torch.ones([1, max_length - x.shape[0]]),
@@ -303,18 +309,18 @@ class ConSORDataLoader:
             for x in node_embedding_list
         ]
 
-        batch_tensors = torch.concatenate(
+        batch_tensors = torch.cat(
             node_embedding_list_padded, dim=0).to(torch.double)
-        batch_attention_masks = torch.concatenate(
+        batch_attention_masks = torch.cat(
             attention_mask, dim=0).type(torch.ByteTensor)
 
         return batch_tensors, batch_attention_masks
 
-    def collate_tensor_batch(self, tensor_list):
+    def collate_tensor_batch(self, unbatched_data_list):
         """Function to convert list of tensors into transformer batch.
 
         Args:
-            tensor_list: List of tuples of the following form:
+            unbatched_data_list: List of tuples of the following form:
                 (Object-centric embeddings,
                 Object cluster assignment in initial scene,
                 Object cluster assignment in goal scene,
@@ -322,17 +328,16 @@ class ConSORDataLoader:
                 Scene tuple of key and scene json).
         """
 
-        tensor_list = [tup[0] for tup in tensor_list]
+        tensor_list = [tup[0] for tup in unbatched_data_list]
 
         # batch_input: batch_size x normalized_seq_len x embedding_dim, and
         # batch_attention_mask: batch_size x normalized_seq_len.
         batch_input, batch_attention_mask = self.tensor_to_batch(tensor_list)
 
         initial_cluster_asgns_list = [
-            tup[1] for tup in tensor_list
-        ]  # initial cluster labels
-        goal_cluster_asgns_list = [tup[2]
-                                   for tup in tensor_list]  # goal cluster labels
+            tup[1] for tup in unbatched_data_list]  # initial cluster labels
+        goal_cluster_asgns_list = [
+            tup[2] for tup in unbatched_data_list]  # goal cluster labels
 
         batch_initial_cluster_asgns = initial_cluster_asgns_list[0].clone()
         batch_goal_cluster_asgns = goal_cluster_asgns_list[0].clone()
@@ -343,18 +348,17 @@ class ConSORDataLoader:
             initial_cluster_asgns_list[1:], goal_cluster_asgns_list[1:]
         ):
             # add original goal and initial cluster assignments (no offset)
-            batch_goal_cluster_asgns = torch.concatenate(
+            batch_goal_cluster_asgns = torch.cat(
                 [batch_goal_cluster_asgns, goal_cluster_asgn]
             )
 
-            batch_initial_cluster_asgns = torch.concatenate(
+            batch_initial_cluster_asgns = torch.cat(
                 [batch_initial_cluster_asgns, initial_cluster_asgn]
             )
-
             batch_node_split += [len(goal_cluster_asgn)]
 
-        graph_objects_list = [tup[3] for tup in tensor_list]
-        json_list = [tup[4] for tup in tensor_list]
+        graph_objects_list = [tup[3] for tup in unbatched_data_list]
+        json_list = [tup[4] for tup in unbatched_data_list]
 
         return (
             batch_input,
@@ -366,29 +370,29 @@ class ConSORDataLoader:
             json_list,
         )
 
-    def collate_val_data(self, tensor_list):
+    def collate_val_data(self, unbatched_data_list):
         """Wraps around collate_tensors method for validation data.
 
         Args:
-            tensor_list: See collate_tensors method.
+            unbatched_data_list: See collate_tensors method.
         """
 
-        batch_size = min(self.val_batch_size, len(tensor_list))
+        batch_size = min(self.val_batch_size, len(unbatched_data_list))
 
         if batch_size == 1:
             number_of_batches = 1
         else:
-            number_of_batches = 1 + len(tensor_list) // batch_size
+            number_of_batches = 1 + len(unbatched_data_list) // batch_size
 
         val_batch_indices = np.array_split(
-            np.arange(len(tensor_list)), number_of_batches
+            np.arange(len(unbatched_data_list)), number_of_batches
         )
 
         val_batch_list = []
 
         for batch_idx in val_batch_indices:
             val_batch = self.collate_tensor_batch(
-                [tensor_list[i] for i in batch_idx])
+                [unbatched_data_list[i] for i in batch_idx])
 
             val_batch_list.append(val_batch)
 

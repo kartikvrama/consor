@@ -15,7 +15,7 @@ import pandas as pd
 
 from data import clustering_rules
 from helper_data import display_cluster
-from helper_eval import calculate_ged_lsa
+from helper_eval import calculate_scene_edit_distance_lsa
 
 # Arguments for generating data.
 flags.DEFINE_integer(
@@ -275,14 +275,14 @@ class RearrangeAI2Thor:
 
         # comparing rule-0 with rule-1 to rule-{N-1} scenes.
         goal_distances = [
-            calculate_ged_lsa(
+            calculate_scene_edit_distance_lsa(
                 scene_cluster_byrule[r1], scene_cluster_byrule[r2])[0]
             for r1, r2 in all_rule_pairs
         ]
         comparing_goal_distances = [ged_condition(x) for x in goal_distances]
 
         goal_distances_equalinst = [
-            calculate_ged_lsa(
+            calculate_scene_edit_distance_lsa(
                 scene_cluster_byrule_equalinst[r1], scene_cluster_byrule_equalinst[r2]
             )[0]
             for r1, r2 in all_rule_pairs
@@ -784,7 +784,7 @@ class RearrangeAI2Thor:
             )
 
             # Validate that edit distance b/w pregoal and original goal equals depth of search tree.
-            graph_edit_distance, _ = calculate_ged_lsa(
+            graph_edit_distance, _ = calculate_scene_edit_distance_lsa(
                 scene_pregoal,
                 self._goal_scenes[scene_iter_posid],
             )

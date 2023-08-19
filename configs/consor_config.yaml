@@ -5,13 +5,20 @@ SYSTEM:
 
 rules: class,ooe,affordance,utility
 
+DATA:
+  train_tensors_path: /home/kartik/Documents/datasets/consor_data_old/consor_seen_objects_tensors/consor_seen_objects_train.pt
+  val_tensors_path: /home/kartik/Documents/datasets/consor_data_old/consor_seen_objects_tensors/consor_seen_objects_val.pt
+  seen_test_tensors_path: /home/kartik/Documents/datasets/consor_data_old/consor_seen_objects_tensors/consor_seen_objects_test.pt
+  unseen_test_tensors_path: /home/kartik/Documents/datasets/consor_data_old/consor_unseen_objects_tensors/consor_unseen_objects_test.pt
+  seen_test_json_path: /home/kartik/Documents/datasets/consor_data_old/consor_seen_objects_test.json
+  unseen_test_json_path: /home/kartik/Documents/datasets/consor_data_old/consor_unseen_objects_test.json
+
 TRAIN:
   num_epochs: 30
   batch_size: 64
   lrate: 1e-3
-  wtdecay: 1e-20
-  tensor_data_folder: /home/kartik/Documents/github_projs/semantic_rearrangement_data/rearrange_ai2thor/dict_dataset/data_paired_v4_feb17/02-17-2023_model-transformer_conceptnet_seen-objs_tensors
-  data_aliasing: NA
+  wt_decay: 1e-20
+  log_folder: ./logs
 
 MODEL:
   edge_feature_len: 1
@@ -26,7 +33,5 @@ LOSS:
   triplet_margin: 0.75 # 0.75
 
 TEST:
-  ckpt: /home/kartik/Documents/github_projs/semantic_rearrangement/logs/transf_embedder/logs_02-24-2023/allrules-18_42_55-307832_Feb-24-2023-epoch=19-step=37240-success_rate=1.00.pth.ckpt
-  json_data_folder: /home/kartik/Documents/github_projs/semantic_rearrangement_data/rearrange_ai2thor/dict_dataset/data_paired_v4_feb17
-  tensor_data_folder: /home/kartik/Documents/github_projs/semantic_rearrangement_data/rearrange_ai2thor/dict_dataset/data_paired_v4_feb17/02-17-2023_model-transformer_conceptnet_seen-objs_tensors
-  data_aliasing: NA
+  ckpt: ./logs/consor_2023_08_21_16_56_24/-2023_08_21_16_56_24-epoch=19-step=37240-success_rate=1.00.pth.ckpt
+  results_folder: ./logs

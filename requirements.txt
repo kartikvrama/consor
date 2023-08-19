@@ -6,4 +6,6 @@ scipy
 matplotlib
 absl-py
 pyyaml
+pytorch_metric_learning
 pytorch-lightning
+wandb

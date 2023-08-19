@@ -1,19 +1,38 @@
-'''Helper functions for performing evaluation.'''
-
-from copy import deepcopy
-from matplotlib import rcParams
-import matplotlib.pyplot as plt
+"""Helper functions for evaluating rearrangement methods."""
 
 import numpy as np
-
 from scipy.optimize import linear_sum_assignment
 
 
-def typecase_json_keys(json_elem):
+def calculate_evaluation_metrics(results_list):
+    """Calculates success rate and non-zero SED from evaluation results.
+    
+    Args:
+    results_list: List of evaluation results (refer to test method in
+        consore_core.model).
+    """
 
-    result = dict()
+    success_rate = 0.0
+    non_zero_sed_array = []
 
-    for key, value in json_elem.items():
+    for result_dict in results_list:
+        if result_dict['sed'] == 0:
+            success_rate += 1
+        else:
+            non_zero_sed_array.append(result_dict['sed'])
+
+    success_rate /= len(results_list)
+    non_zero_sed_mean = np.mean(non_zero_sed_array)
+    non_zero_sed_std = np.std(non_zero_sed_array)
+
+    return success_rate, non_zero_sed_mean, non_zero_sed_std
+
+def _typecase_json_keys(scene_dict):
+    """Sets the keys of a scene dictionary as string or integer.
+    """
+
+    result = {}
+    for key, value in scene_dict.items():
         if key == 'table':
             result[str(key)] = value
         else:
@@ -23,19 +42,24 @@ def typecase_json_keys(json_elem):
 
 
 class GraphStruct:
-    """Common data structure for rearrangement scene graphs."""
+    """Common data structure for rearrangement scene graphs.
+    
+    Attributes:
+        scene_dict: Dictionary representation of the scene, with keys as
+            receptacle labels and values as lists of objects.
+    """
 
     def __init__(self, graph):
 
         self.immovable_objects = ['table', 'box']
 
-        assert type(graph) == type(dict()), \
+        assert isinstance(graph, dict), \
             f'Input graph type {type(graph)} is not a dictionary'
 
         # graph in json format provided
         if set(graph.keys()) == set(['objects', 'edges', 'dynamic_edge_mask', 'rule']):
 
-            self.json_graph_to_cluster(graph)
+            self.convert_json_scene_to_dict(graph)
 
         # receptacle:objects dict provided
         elif all([x in graph.keys() for x in ['objects', 'scene']]):
@@ -43,7 +67,7 @@ class GraphStruct:
             # Assert there are no instance ids for object names
             assert all(['-' not in obj for obj in graph['objects']])
 
-            self.graph_dict = typecase_json_keys(graph['scene'])
+            self.scene_dict = _typecase_json_keys(graph['scene'])
 
         else:  # cluster provided, assume no objects on the table
 
@@ -51,96 +75,108 @@ class GraphStruct:
 
     def __len__(self):
 
-        return len(list(self.graph_dict.keys()))  # number of boxes + 1 table
+        return len(list(self.scene_dict.keys()))  # number of boxes + 1 table
 
-    def json_graph_to_cluster(self, json_graph):
-        ''' Convert json graph to cluster '''
+    def convert_json_scene_to_dict(self, json_scene):
+        """Converts a JSON scene to a dictionary saved in memory.
+        
+        Args:
+            json_scene: Rearrangement scene loaded from JSON data file.
+        """
 
-        num_immovable_objs = 1 + max([i for i, obj in enumerate(json_graph['objects'])
+        num_immovable_objs = 1 + max([i for i, obj in enumerate(json_scene['objects'])
                                       if obj.split('-')[0] in self.immovable_objects])
 
-        movable_edge_ids = [i for i, eh in enumerate(json_graph['edges'][0])
+        movable_edge_ids = [i for i, eh in enumerate(json_scene['edges'][0])
                             if eh >= num_immovable_objs]  # all movable edge heads
 
         # Initialize final graph (Note: clusters numbered from 1)
-        self.graph_dict = dict({1 + int(obj.split('-')[1]): [] for obj in json_graph['objects']
+        self.scene_dict = dict({1 + int(obj.split('-')[1]): [] for obj in json_scene['objects']
                                 if obj.split('-')[0] == 'box'})
-        self.graph_dict.update({'table': []})
+        self.scene_dict.update({'table': []})
 
         for edge_id in movable_edge_ids:
 
-            edge_hd, edge_tl = json_graph['edges'][0][edge_id], json_graph['edges'][1][edge_id]
+            edge_hd, edge_tl = json_scene['edges'][0][edge_id], json_scene['edges'][1][edge_id]
 
-            object_name = json_graph['objects'][edge_hd].split('-')[0]
+            object_name = json_scene['objects'][edge_hd].split('-')[0]
 
             if edge_tl == 0:  # object on table (edge id 0)
 
-                self.graph_dict['table'].append(object_name)
+                self.scene_dict['table'].append(object_name)
 
             else:
 
                 box_id = edge_tl  # edge id of box_i is i
 
-                if box_id in self.graph_dict.keys():
+                if box_id in self.scene_dict.keys():
 
-                    self.graph_dict[box_id].append(object_name)
+                    self.scene_dict[box_id].append(object_name)
 
                 else:
 
                     raise ValueError(
-                        'Issue with json_graph_to_cluster [utils_eval]')
+                        'Issue with json_scene_to_cluster [utils_eval]')
 
-        for key in self.graph_dict:  # sort objects in each box
+        for key in self.scene_dict:  # sort objects in each box
 
-            self.graph_dict[key] = sorted(self.graph_dict[key])
+            self.scene_dict[key] = sorted(self.scene_dict[key])
 
-    def movable_objects(self):
-        ''' Returns a sorted list of all movable objects in the scene '''
+    def return_scene_objects(self):
+        """Returns a sorted list of objects in scene_dict."""
 
         assert all([obj not in self.immovable_objects
-                    for value in self.graph_dict.values() for obj in value])
+                    for value in self.scene_dict.values() for obj in value])
 
-        object_list = [obj for value in self.graph_dict.values()
+        object_list = [obj for value in self.scene_dict.values()
                        for obj in value]
 
         return sorted(object_list)
 
-    def to_set(self):
-        ''' Return a partition of objects grouped by their box receptacle, 
-                ordering boxes by number and EXCLUDING objects on the table '''
+    def to_ordered_list(self):
+        """Converts scene_dict into an ordered list of object lists, excluding
+            table objects."""
 
-        return [list(self.graph_dict[k]) for k in range(1, len(self.graph_dict.keys()))]
-
-    def display(self):
-
-        return display_cluster(self.graph_dict)
+        return [list(self.scene_dict[k]) for k in range(1, len(self.scene_dict.keys()))]
 
 
-def calculate_ged_lsa(graph_dict_pred, graph_dict_goal, debug=False):
+def calculate_scene_edit_distance_lsa(scene_a, scene_b):
+    """Calculates the edit distance between two rearrangement scenes.
+    
+    This function computes the linear sum assignment between the cluster
+    representations of two scenes, and returns the minimum number of objects
+    required to move to transform one scene into the other.
+    
+    Args:
+        scene_a: A dictionary representation of the predicted scene.
+        scene_b: A dictionary representation of the goal scene.
+
+    Returns:
+        Absolute and relative edit distance between input scenes.    
+    """
 
     # Convert mixed modality inputs into clusters with semantic concepts
-    graph_struct_pred = GraphStruct(graph_dict_pred)
-    graph_struct_goal = GraphStruct(graph_dict_goal)
+    scene_struct_a = GraphStruct(scene_a)
+    scene_struct_b = GraphStruct(scene_b)
 
     # cannot calculate edit distance between scenes with unequal number of objects or clusters
-    if len(graph_struct_goal) != len(graph_struct_pred) or \
-            graph_struct_pred.movable_objects() != graph_struct_goal.movable_objects():
+    if len(scene_struct_b) != len(scene_struct_a) or \
+            scene_struct_a.return_scene_objects() != scene_struct_b.return_scene_objects():
 
         return np.inf, 1.0
 
     # number of movable objs, for ged normalization
-    num_movable_objects = len(graph_struct_pred.movable_objects())
+    num_movable_objects = len(scene_struct_a.return_scene_objects())
 
     # Calculate linear sum assignment from pairwise cluster similarity
-    lsa_coords = find_lsa(graph_struct_pred.to_set(),
-                          graph_struct_goal.to_set())
+    lsa_coords = find_lsa(scene_struct_a.to_ordered_list(),
+                          scene_struct_b.to_ordered_list())
 
     # Objects on the table are always mapped together
-    # TODO: extend to other receptacle categories
     lsa_coords.append(('table', 'table'))
 
     # Initialize ged metric and misplaced objects dictionary
-    ged = 0
+    sed = 0
     misplaced_objs = dict({})
 
     for i, asgn_xy in enumerate(lsa_coords):
@@ -148,65 +184,42 @@ def calculate_ged_lsa(graph_dict_pred, graph_dict_goal, debug=False):
         asgn_id_pred, asgn_id_goal = asgn_xy
 
         _, pred_goal_xy_unmatched = return_list_intersection(
-            graph_struct_pred.graph_dict[asgn_id_pred],
-            graph_struct_goal.graph_dict[asgn_id_goal]
+            scene_struct_a.scene_dict[asgn_id_pred],
+            scene_struct_b.scene_dict[asgn_id_goal]
         )
 
         misplaced_objs[i] = pred_goal_xy_unmatched
 
-        ged += len(misplaced_objs[i])
+        sed += len(misplaced_objs[i])
 
-    if debug:
+    # constant prevents division by zero.
+    sed_norm = min(1, float(sed)/(num_movable_objects + 1e-6))
 
-        print('Input 1 (default=predicted)')
-        display_cluster(graph_struct_pred.graph_dict)
-
-        print('Input 2 (default=goal)')
-        display_cluster(graph_struct_goal.graph_dict)
-
-        print('Number of table objects in pred-{} and goal-{}'
-              .format(len(graph_struct_pred.graph_dict['table']),
-                      len(graph_struct_goal.graph_dict['table'])))
-
-        print('Misplaced objects:')
-
-        for asgn_id, key in enumerate(misplaced_objs.keys()):
-
-            asgn_id_pred, asgn_id_goal = lsa_coords[asgn_id]
-            print(
-                f'Mapping:{asgn_id_pred}-{asgn_id_goal} | {key}:{misplaced_objs[key]}')
-
-        input('utils_eval line 152')
-
-    ged_norm = min(1, float(ged)/(num_movable_objects+1e-6))
-
-    return ged, ged_norm  # prevent division by zero and cap at 1
+    return sed, sed_norm  # prevent division by zero and cap at 1
 
 
-def find_lsa(cluster_pred, cluster_goal):
-    '''
-        Find the linear sum assignment between two clusters (list of lists) 
-            that maximizes the semantic similarity overlap
-    '''
+def find_lsa(cluster_a, cluster_b):
+    """Wraps around the linear sum assignment function to compute LSA for scene
+        clusters.
 
-    # TODO: if clusters have semantic labels, how to perform mixed lsa (some clusters have hard mappings to each other, others dont)
+    Args:
+        cluster_a: Dictionary representation of scene A.
+        cluster_b: Dictinoary representation of scene B.
+    
+    """
 
-    cost_matrix = np.zeros(shape=(len(cluster_pred),
-                                  len(cluster_goal)))
+    cost_matrix = np.zeros(shape=(len(cluster_a), len(cluster_b)))
 
-    for row_id, cluster_pred_group in enumerate(cluster_pred):
+    for row_id, cluster_a_group in enumerate(cluster_a):
 
-        for column_id, cluster_goal_group in enumerate(cluster_goal):
+        for column_id, cluster_b_group in enumerate(cluster_b):
 
-            pred_goal_xy_matching, _ = return_list_intersection(cluster_pred_group,
-                                                                cluster_goal_group)
+            pred_goal_xy_matching, _ = return_list_intersection(cluster_a_group,
+                                                                cluster_b_group)
 
             # negative to convert similarity to distance
             cost_matrix[row_id, column_id] = \
                 -len(pred_goal_xy_matching)
-
-    # #DEBUG
-    # print(f'cost matrix:\n{cost_matrix}\n---')
 
     lsa_tuple = linear_sum_assignment(cost_matrix)
 
@@ -214,9 +227,13 @@ def find_lsa(cluster_pred, cluster_goal):
 
 
 def return_list_intersection(list_query, list_value):
-    '''
-        Returns matched and unmatched elements in query
-    '''
+    """Returns the intersection of two lists, and unmatched elements in the
+        query list.
+
+    Args:
+        list_query: List of items to be matched.
+        list_value: List of items to be matched against.
+    """
 
     matched_elems = []
 
