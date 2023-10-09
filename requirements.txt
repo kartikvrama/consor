@@ -9,3 +9,5 @@ pyyaml
 pytorch_metric_learning
 pytorch-lightning
 wandb
+openai
+tenacity

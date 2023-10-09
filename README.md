@@ -26,7 +26,6 @@ THis project requires python 3.8.0. Follow these steps to install the required p
     ```
 
 ### TODO list:
-1. Script to run GPT-3 baseline.
-2. Colab notebook to view evaluation results.
-3. Update README with installation and run instructions.
-4. Colab notebook to interact with ConSOR.
+1. Script to visualize evaluation results.
+2. Update README with installation and run instructions.
+3. Colab notebook to interact with ConSOR.
