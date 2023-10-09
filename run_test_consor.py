@@ -41,7 +41,6 @@ def save_test_results(data_loader, model, file_path):
         non_zero_sed_std: Standard deviation of non-zero SEDs.
     """
 
-    # TODO: Separate test results by rule.
     test_batches = next(iter(data_loader))
     with torch.no_grad():
         test_results = model.test(test_batches, 0)

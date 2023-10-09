@@ -1,158 +1,167 @@
+"""Script to train Abdo-CF baseline."""
+
 import os
-from os.path import abspath, dirname
-import yaml
-import argparse
 from datetime import datetime
+from pathlib import Path
 
+from absl import app
+from absl import flags
 
-
+import yaml
+import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+from abdoCf_core.model import OrganizeMyShelves
+
+flags.DEFINE_string(
+    "config_file_path",
+    "./configs/consor_config.yaml",
+    "Path to the config file for training Abdo-CF baseline.",
+)
+
+FLAGS = flags.FLAGS
 
 
+def main(argv):
+    if len(argv) > 1:
+        raise app.UsageError("Too many command-line arguments.")
 
-def main():
+    datetime_obj = datetime.now()
+    date_time_stamp = datetime_obj.strftime("%Y_%m_%d_%H_%M_%S")
 
-    # Arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-config', help='Config file')
-    args = parser.parse_args()
-
-    dateTimeObj = datetime.now()
-    timestampStr = dateTimeObj.strftime("%H_%M_%S-%f_%b-%d-%Y")
-    datestampStr = dateTimeObj.strftime("%m-%d-%Y")
-
-    current_folder = abspath(dirname(__file__)) + "/"
-
-    # Load config
-    with open(args.config, 'r') as fh:
+    # Load config.
+    with open(FLAGS.config, "r") as fh:
         config = yaml.safe_load(fh)
 
-    seed = config['SEED']
+    log_folder = os.path.join(
+        config["MODEL"]["log_folder"], f"abdoCf_{date_time_stamp}"
+    )
+    Path(log_folder).mkdir(parents=True, exist_ok=True)
+
+    seed = config["SEED"]
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    rules_list = config['DATA']['rules'].split(',') # list of rules in the dataset
-    print(f'rules list: {rules_list}')
-    col2rules = dict({i:rules_list[i] for i in range(len(rules_list))})
-    rules2col_dict = dict({rule:i for i, rule in enumerate(rules_list)})
+    data_folder = config["DATA"]["destination_folder"]
+    folder_tag = config["DATA"]["json_seen_objects_timestamp"] + "_seen-objs"
+    rating_matrix_file_path = os.path.join(
+        data_folder, f"consor_ranking_matrix_train_{folder_tag}.npy"
+    )
+    print(f"Path to training rank matrix: {rating_matrix_file_path}")
 
-    train_data_folder = config['DATA']['train_data_folder'] # data folder
-    folder_tag = train_data_folder.split('/')[-1] # tag to identify ranking matrix
-    assert len(folder_tag) > 1
-
-    folder_tag += '_seen-objs'
-
-    num_epochs = 350
-
-    # load ratings matrix, get matrix shape 
-    ratings_matrix = np.load(config['MODEL']['train_ranking_matrix_file'])
-    print('Ranking matrix, ', config['MODEL']['train_ranking_matrix_file'])
+    # Load training ratings matrix.
+    ratings_matrix = np.load(rating_matrix_file_path)
     num_pairs, num_schemas = ratings_matrix.shape
-
-    # non negative indices (x, y)
+    # Extract all non negative indices (x, y).
     nonneg_indices_xy = np.nonzero(ratings_matrix >= 0)
 
-    # flatten ratings matrix
-    ratings_ravel = ratings_matrix.ravel() 
+    # Flatten ratings matrix.
+    ratings_ravel = ratings_matrix.ravel()
     nonneg_indices_ravel = np.nonzero(ratings_ravel >= 0)[0]
 
-    assert all(np.array([x*num_schemas + y for x, y in zip(*nonneg_indices_xy)]) == nonneg_indices_ravel), \
-        'issue with non negative indices'
+    assert all(
+        np.array([x * num_schemas + y for x, y in zip(*nonneg_indices_xy)])
+        == nonneg_indices_ravel
+    ), "Non negative indices are not calculated properly"
 
-    print('Total size of matrix {}, number of non-negative elements {}'\
-            .format(num_pairs*num_schemas, len(nonneg_indices_ravel)))
+    print(f"Total size of matrix {num_pairs*num_schemas}.")
+    print(f"Number of non-negative elements: {nonneg_indices_ravel}")
 
-    # numpy to tensor
-    ratings_ravel = torch.tensor(ratings_ravel, 
-                                    dtype=torch.float, 
-                                    requires_grad=False)
+    ratings_ravel = torch.tensor(ratings_ravel, dtype=torch.float, requires_grad=False)
 
-    #hyperparameters
-    lambda_reg = 1e-2
-    learning_rate = 1e-2
-    hidden_dimension = 3
+    # Hyperparameters
+    lambda_reg = config["MODEL"]["lambda_reg"]
+    learning_rate = config["MODEL"]["learning_rate"]
+    hidden_dimension = config["MODEL"]["hidden_dimension"]
 
-    # report hyperparams
-    print(f'Hidden dimension: {hidden_dimension}, Num pairs: {num_pairs}, Num schemas: {num_schemas}')
+    model = OrganizeMyShelves(
+        hidden_dimension, num_pairs, num_schemas, lambda_reg=lambda_reg
+    )
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
 
-    model = OrganizeMyShelves(hidden_dimension, num_pairs, num_schemas, lambda_reg=lambda_reg)
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)    
-
-    # Val dataset
-    val_ratings_matrix = np.load(config['MODEL']['val_ranking_matrix_file'])
-    # non negative indices (x, y)
+    # Validation dataset.
+    val_ratings_matrix_file_path = os.path.join(
+        data_folder, f"consor_ranking_matrix_val_{folder_tag}.npy"
+    )
+    val_ratings_matrix = np.load(val_ratings_matrix_file_path)
+    # Extract all non negative indices (x, y).
     val_nonneg_indices_xy = np.nonzero(val_ratings_matrix >= 0)
 
-    # flatten ratings matrix and convert to tensor
+    # Flatten ratings matrix and convert to tensor
     val_ratings_ravel = val_ratings_matrix.ravel()
-    val_ratings_ravel = torch.tensor(val_ratings_ravel, 
-                                        dtype=torch.float, 
-                                        requires_grad=False) 
+    val_ratings_ravel = torch.tensor(
+        val_ratings_ravel, dtype=torch.float, requires_grad=False
+    )
     val_nonneg_indices_ravel = np.nonzero(val_ratings_ravel >= 0)[0]
 
+    # Training loop.
     losses = []
-
     ep = 1
     while True:
-        
         ratings_pred = model.forward()
-        mse_loss, total_loss = \
-            model.calculate_loss(ratings_pred, 
-                                    ratings_ravel, 
-                                    nonneg_indices_ravel,
-                                    nonneg_indices_xy)
+        mse_loss, total_loss = model.calculate_loss(
+            ratings_pred, ratings_ravel, nonneg_indices_ravel, nonneg_indices_xy
+        )
         total_loss.backward()
         optimizer.step()
         optimizer.zero_grad()
+
         save_mse_loss = mse_loss.detach().cpu().numpy()
-
         losses.append(save_mse_loss)
-
         if len(losses) >= 2:
-            convergence_rate = (losses[-2] - save_mse_loss)/losses[-2]
+            convergence_rate = (losses[-2] - save_mse_loss) / losses[-2]
         else:
             convergence_rate = 1
 
-        print('Epoch: {}, Train loss: {}, Convergence: {}'.format(ep+1, save_mse_loss, convergence_rate))
+        print(
+            f"Epoch: {ep+1}, Train loss: {save_mse_loss}, Convergence: {convergence_rate}"
+        )
 
+        # End training if convergence rate is less than 1e-3.
         if convergence_rate < 1e-3:
             break
 
         with torch.no_grad():
             ratings_pred = model.forward()
-            val_mse_loss, _ = model.calculate_loss(ratings_pred,
-                                                    val_ratings_ravel,
-                                                    val_nonneg_indices_ravel,
-                                                    val_nonneg_indices_xy)
+            val_mse_loss, _ = model.calculate_loss(
+                ratings_pred,
+                val_ratings_ravel,
+                val_nonneg_indices_ravel,
+                val_nonneg_indices_xy,
+            )
 
-            print('Epoch: {}, Val loss: {}'.format(ep+1, val_mse_loss.cpu().numpy()))
+            print(f"Epoch: {ep+1}, Val loss: {val_mse_loss.cpu().numpy()}")
 
         optimizer.zero_grad()
         ep += 1
 
-    print(f'Initial train MSE loss: {losses[0]}')
-    print(f'Final train MSE loss: {losses[-1]}')
+    print(f"Initial train MSE loss: {losses[0]}")
+    print(f"Final train MSE loss: {losses[-1]}")
 
     # save plot
     plt.plot(losses)
     plt.yticks(np.arange(0, 5, 0.2))
     plt.ylim(0, 5)
-    plt.savefig(os.path.join(current_folder, f'train_loss_{folder_tag}.png'))
+    plt.savefig(os.path.join(log_folder, f"train_loss_{date_time_stamp}.png"))
 
-    # tensor to numpy 
+    # tensor to numpy
     biases_obj_pair = model.biases_obj_pair.cpu().detach().numpy()
     biases_schema = model.biases_schema.cpu().detach().numpy()
     obj_preference_matrix = model.obj_preference_matrix.cpu().detach().numpy()
     schema_preference_matrix = model.schema_preference_matrix.cpu().detach().numpy()
 
-    np.savez(os.path.join(current_folder, f'trained_matrix_cf_{folder_tag}_allrules_{timestampStr}.npz'),
-                biases_obj_pair=biases_obj_pair,
-                biases_schema=biases_schema,
-                obj_preference_matrix=obj_preference_matrix,
-                schema_preference_matrix=schema_preference_matrix
-                )
+    np.savez(
+        os.path.join(
+            log_folder,
+            f"abdoCf-weights-{date_time_stamp}.npz",
+        ),
+        biases_obj_pair=biases_obj_pair,
+        biases_schema=biases_schema,
+        obj_preference_matrix=obj_preference_matrix,
+        schema_preference_matrix=schema_preference_matrix,
+    )
 
-if __name__ == '__main__':
-    main()
+
+if __name__ == "__main__":
+    app.run(main)
