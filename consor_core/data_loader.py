@@ -210,13 +210,13 @@ class ConSORDataLoader(Dataset):
         )
 
         # Final representation.
-        object_embeddings = torch.cat(
+        object_embeddings = torch.concat(
             [
                 object_embeddings_cs,
                 object_embeddings_container_pos,
                 object_embeddings_instance_pos,
             ],
-            axis=1,
+            dim=1,
         ).type(torch.float)
 
         return (
@@ -289,7 +289,7 @@ class ConSORDataLoader(Dataset):
 
         # dimensions of padded data list: 1 x max_length x embedding_dim.
         node_embedding_list_padded = [
-            torch.cat(
+            torch.concat(
                 [x, torch.zeros([max_length - x.shape[0], embedding_dim])], dim=0
             ).unsqueeze(0)
             for x in node_embedding_list
@@ -299,7 +299,7 @@ class ConSORDataLoader(Dataset):
         # zeros = actual values, ones = padded values.
         # Syntax: https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html#torch.nn.Transformer.
         attention_mask = [
-            torch.cat(
+            torch.concat(
                 [
                     torch.zeros([1, x.shape[0]]),
                     torch.ones([1, max_length - x.shape[0]]),

@@ -31,7 +31,7 @@ def main(argv):
     date_time_stamp = datetime_obj.strftime("%Y_%m_%d_%H_%M_%S")
 
     # Load config.
-    with open(FLAGS.config, "r") as fh:
+    with open(FLAGS.config_file_path, "r") as fh:
         config = yaml.safe_load(fh)
 
     log_folder = os.path.join(
@@ -66,13 +66,15 @@ def main(argv):
     ), "Non negative indices are not calculated properly"
 
     print(f"Total size of matrix {num_pairs*num_schemas}.")
-    print(f"Number of non-negative elements: {nonneg_indices_ravel}")
+    print(f"Number of non-negative elements: {len(nonneg_indices_ravel)}")
 
-    ratings_ravel = torch.tensor(ratings_ravel, dtype=torch.float, requires_grad=False)
+    ratings_ravel = torch.FloatTensor(ratings_ravel)
+    ratings_ravel.requires_grad = False
 
     # Hyperparameters
     lambda_reg = config["MODEL"]["lambda_reg"]
     learning_rate = config["MODEL"]["learning_rate"]
+    print(learning_rate, type(learning_rate))
     hidden_dimension = config["MODEL"]["hidden_dimension"]
 
     model = OrganizeMyShelves(
@@ -90,10 +92,10 @@ def main(argv):
 
     # Flatten ratings matrix and convert to tensor
     val_ratings_ravel = val_ratings_matrix.ravel()
-    val_ratings_ravel = torch.tensor(
-        val_ratings_ravel, dtype=torch.float, requires_grad=False
-    )
     val_nonneg_indices_ravel = np.nonzero(val_ratings_ravel >= 0)[0]
+
+    val_ratings_ravel = torch.FloatTensor(val_ratings_ravel)
+    val_ratings_ravel.requires_grad = False
 
     # Training loop.
     losses = []

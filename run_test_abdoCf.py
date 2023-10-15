@@ -75,6 +75,7 @@ def cluster_objects(objects, num_clusters, schema):
     final_labels = [i + 1 for i in spectral_clustering.labels_]  # labels start at 1.
 
     assert len(set(final_labels)) == max(final_labels), "Missing numbers in the labels"
+    final_labels = [str(i) for i in final_labels]
 
     predicted_scene = dict({i: [] for i in final_labels})
     predicted_scene.update({"table": []})
@@ -130,7 +131,7 @@ def main(argv):
     date_time_stamp = datetime_obj.strftime("%Y_%m_%d_%H_%M_%S")
 
     # Load config.
-    with open(FLAGS.config, "r") as fh:
+    with open(FLAGS.config_file_path, "r") as fh:
         config = yaml.safe_load(fh)
 
     seed = config["SEED"]
@@ -154,7 +155,7 @@ def main(argv):
     schemas2col = lambda x: schemas2col_dict[x]
 
     # Load parameters by schema.
-    cf_params = np.load(config["MODEL"]["ratings_matrix_fitted"])
+    cf_params = np.load(config["EVAL"]["ratings_matrix_fitted"])
 
     # Evaluation loop.
     results_array = []
@@ -178,7 +179,7 @@ def main(argv):
         # Calculate scene edit distance between prediction and ground truth.
         goal_scene = example["goal"]
         schema_gt = example["rule"]
-        pred_goal_ed, pred_goal_ed_norm = calculate_scene_edit_distance_lsa(
+        pred_goal_ed, _ = calculate_scene_edit_distance_lsa(
             final_pred_scene, goal_scene
         )
 
@@ -192,7 +193,10 @@ def main(argv):
 
         results_array.append(data_result)
         predictions_dict[example_key] = dict(
-            {"prediction": final_pred_scene, "edit_distance": pred_goal_ed}
+            {
+                "prediction": final_pred_scene,
+                "edit_distance": pred_goal_ed
+            }
         )
 
         # DEBUG
@@ -220,7 +224,7 @@ def main(argv):
         os.path.join(results_folder, f"abdoCf_{date_time_stamp}_seen_predictions.json"),
         "w",
     ) as fw:
-        json.dump(predictions_dict, fw)
+        json.dump(predictions_dict, fw, indent=4)
 
     # Calculate aggregate evaluation metrics and save them.
     (success_rate, non_zero_sed_mean, non_zero_sed_std) = calculate_evaluation_metrics(

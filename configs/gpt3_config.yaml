@@ -4,7 +4,7 @@ FEWSHOT_PROMPT:
   key_utility: utility-unaliased-id511.dist6
   key_affordance: affordance-unaliased-id511.dist6
   key_ooe: ooe-unaliased-id511.dist6
-  destination_folder: ./
+  prompt_destination_folder: ./
 
 EVAL:
   few_shot_prompt_file_path: /path_to_few_shot_prompt/

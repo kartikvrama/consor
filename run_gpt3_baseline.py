@@ -28,7 +28,7 @@ flags.DEFINE_string(
 )
 
 flags.DEFINE_string(
-    "= FLAGS.test_json_data
+    "test_json_data",
     None,
     help="Path to the json test data.",
 )

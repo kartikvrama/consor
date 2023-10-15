@@ -8,14 +8,15 @@ DATA:
   destination_folder: /home/kartik/Documents/datasets/consor_data/matrix
 
 MODEL:
-  learning_rate: 1e-2
-  lambda_reg: 1e-2
+  learning_rate: 1.0e-2
+  lambda_reg: 1.0e-2
   hidden_dimension: 3
-  object_combinations_file: /home/kartik/Documents/github_projs/semantic_rearrangement/baseline_abdo/object_combinations_data_paired_v4_feb17_subsampledby-250scenes_seen-objs.txt
-  train_ranking_matrix_file: /home/kartik/Documents/github_projs/semantic_rearrangement/baseline_abdo/ranking_matrix_train_data_paired_v4_feb17_subsampledby-250scenes_seen-objs.npy
-  val_ranking_matrix_file: /home/kartik/Documents/github_projs/semantic_rearrangement/baseline_abdo/ranking_matrix_val_data_paired_v4_feb17_subsampledby-250scenes_seen-objs.npy
+  object_combinations_file: /home/kartik/Documents/datasets/consor_data/matrix/object_combinations_2023_08_19_15_54_37_seen-objs.txt
+  train_ranking_matrix_file: /home/kartik/Documents/datasets/consor_data/matrix/consor_ranking_matrix_train_2023_08_19_15_54_37_seen-objs.npy
+  val_ranking_matrix_file: /home/kartik/Documents/datasets/consor_data/matrix/consor_ranking_matrix_val_2023_08_19_15_54_37_seen-objs.npy
   log_folder: ./logs
 
 EVAL:
-  ratings_matrix_fitted: /home/kartik/Documents/github_projs/semantic_rearrangement/baseline_abdo/trained_matrix_cf_data_paired_v4_feb17_subsampledby-250scenes_seen-objs_allrules_17_01_48-816197_Feb-28-2023.npz
+  ratings_matrix_fitted: ./logs/abdoCf_2023_10_15_17_30_28/abdoCf-weights-2023_10_15_17_30_28.npz
+  test_data_json: /home/kartik/Documents/datasets/consor_data/consor_2023_08_19_15_54_37_seen_objects_test.json
   results_folder: ./logs

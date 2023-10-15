@@ -3,18 +3,19 @@
 import os
 import json
 from datetime import datetime
+from pathlib import Path
 
 import yaml
 from absl import app
 from absl import flags
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 import numpy as np
 import pandas as pd
 
 flags.DEFINE_string(
     "config_file_path",
-    "./configs/data_config.yaml",
+    "./configs/abdo_config.yaml",
     "Path to the config file for generating ranking data.",
 )
 
@@ -23,8 +24,8 @@ FLAGS = flags.FLAGS
 
 def _increment_ranking_matrix(
     matrix,
-    object_set_1: dict[str, Any],
-    object_set_2: Optional[dict[str, Any]],
+    object_set_1: Dict[str, Any],
+    object_set_2: Optional[Dict[str, Any]],
     column_id: int,
 ):
     """Add a rearrangement scene cluster to the ranking matrix.
@@ -167,7 +168,7 @@ def main(argv):
     global object_combinations
 
     # Load config.
-    with open(FLAGS.config, "r") as fh:
+    with open(FLAGS.config_file_path, "r") as fh:
         config = yaml.safe_load(fh)
         config = config["DATA"]
 
@@ -182,6 +183,7 @@ def main(argv):
 
     folder_tag = config["json_seen_objects_timestamp"]
     destination_folder = config["destination_folder"]
+    Path(destination_folder).mkdir(parents=True, exist_ok=True)
 
     with open(train_json_file, "r") as fh:
         train_examples = json.load(fh)
@@ -207,7 +209,7 @@ def main(argv):
     # Save object combinations, while removing last comma.
     with open(
         os.path.join(
-            config["destination_folder"], f"object_combinations_{folder_tag}.txt"
+            destination_folder, f"object_combinations_{folder_tag}.txt"
         ),
         "w",
     ) as fh:
@@ -229,7 +231,8 @@ def main(argv):
 
     final_ranking_matrix_val = generate_ranking_matrix(val_examples, schemas_list)
     np.save(
-        os.path.join(destination_folder, f"consor_ranking_matrix_val_{folder_tag}.npy"),
+        os.path.join(
+            destination_folder, f"consor_ranking_matrix_val_{folder_tag}.npy"),
         final_ranking_matrix_val,
     )
     print("Saved validation ranking matrix")
