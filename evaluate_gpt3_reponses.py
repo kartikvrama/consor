@@ -26,6 +26,12 @@ flags.DEFINE_string(
     help="Path to the json test data.",
 )
 
+flags.DEFINE_string(
+    "results_folder",
+    "./logs",
+    help="Path to the folder to save the results."
+)
+
 FLAGS = flags.FLAGS
 
 
@@ -232,7 +238,7 @@ def main(argv):
                 result = {
                     "data_key": current_key,
                     "objects": predicted_scene["objects"],
-                    "schema": test_data[current_key]["rule"],
+                    "rule": test_data[current_key]["rule"],
                     "init_distance_from_goal": test_data[current_key]["edit_distance"],
                     "sed": sed,
                 }
@@ -246,10 +252,10 @@ def main(argv):
     results_folder = FLAGS.results_folder
     Path(results_folder).mkdir(parents=True, exist_ok=True)
 
-    if "seen" in FLAGS.test_json_data:
-        seen_tag = "seen"
-    elif "unseen" in FLAGS.test_json_data:
+    if "unseen" in FLAGS.test_json_data:
         seen_tag = "unseen"
+    elif "seen" in FLAGS.test_json_data:
+        seen_tag = "seen"
     else:
         raise ValueError("Not clear if the test data is seen or unseen.")
 
