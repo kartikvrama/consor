@@ -74,7 +74,6 @@ def main(argv):
     # Hyperparameters
     lambda_reg = config["MODEL"]["lambda_reg"]
     learning_rate = config["MODEL"]["learning_rate"]
-    print(learning_rate, type(learning_rate))
     hidden_dimension = config["MODEL"]["hidden_dimension"]
 
     model = OrganizeMyShelves(

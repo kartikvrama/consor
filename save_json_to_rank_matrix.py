@@ -181,7 +181,7 @@ def main(argv):
     )  
 
     folder_tag = config["json_seen_objects_timestamp"]
-    destination_folder = config["destination_folder"]
+    destination_folder = config["matrix_destination_folder"]
     Path(destination_folder).mkdir(parents=True, exist_ok=True)
 
     with open(train_json_file, "r") as fh:

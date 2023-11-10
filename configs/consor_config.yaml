@@ -6,12 +6,12 @@ SYSTEM:
 rules: class,ooe,affordance,utility
 
 DATA:
-  train_tensors_path: /home/kartik/Documents/datasets/consor_data_old/consor_seen_objects_tensors/consor_seen_objects_train.pt
-  val_tensors_path: /home/kartik/Documents/datasets/consor_data_old/consor_seen_objects_tensors/consor_seen_objects_val.pt
-  seen_test_tensors_path: /home/kartik/Documents/datasets/consor_data_old/consor_seen_objects_tensors/consor_seen_objects_test.pt
-  unseen_test_tensors_path: /home/kartik/Documents/datasets/consor_data_old/consor_unseen_objects_tensors/consor_unseen_objects_test.pt
-  seen_test_json_path: /home/kartik/Documents/datasets/consor_data_old/consor_seen_objects_test.json
-  unseen_test_json_path: /home/kartik/Documents/datasets/consor_data_old/consor_unseen_objects_test.json
+  train_tensors_path: files/data/tensors/consor_2023_08_19_15_52_19_seen_objects_train.pt
+  val_tensors_path: files/data/tensors/consor_2023_08_19_15_52_19_seen_objects_val.pt
+  seen_test_tensors_path: files/data/tensors/consor_2023_08_19_15_52_19_seen_objects_test.pt
+  unseen_test_tensors_path: files/data/tensors/consor_2023_08_19_15_52_19_unseen_objects_test.pt
+  seen_test_json_path: files/data/json/consor_2023_08_19_15_52_19_seen_objects_test.json
+  unseen_test_json_path: files/data/json/consor_2023_08_19_15_52_19_unseen_objects_test.json
 
 TRAIN:
   num_epochs: 30
@@ -33,5 +33,5 @@ LOSS:
   triplet_margin: 0.75 # 0.75
 
 TEST:
-  ckpt: ./logs/consor_2023_08_21_16_56_24/-2023_08_21_16_56_24-epoch=19-step=37240-success_rate=1.00.pth.ckpt
+  ckpt: files/consor_checkpoint/consor_2023_08_21_16_56_24-epoch=19-step=37240-success_rate=1.00.pth.ckpt
   results_folder: ./logs

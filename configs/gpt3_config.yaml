@@ -1,5 +1,5 @@
 FEWSHOT_PROMPT:
-  # NOTE: change these keys to match the data keys in your training data. 
+  # Change these keys to match the data keys in your training data. 
   key_class: class-unaliased-id511.dist6
   key_utility: utility-unaliased-id511.dist6
   key_affordance: affordance-unaliased-id511.dist6
@@ -7,5 +7,6 @@ FEWSHOT_PROMPT:
   prompt_destination_folder: ./
 
 EVAL:
-  few_shot_prompt_file_path: /path_to_few_shot_prompt/
+  # Change this file path to point to the desired few shot prompt.
+  few_shot_prompt_file_path: files/data/gpt3_few_shot_prompt.txt
   results_folder: ./logs

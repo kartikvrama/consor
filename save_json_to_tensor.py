@@ -57,7 +57,8 @@ def main(argv):
     torch.random.manual_seed(int(config["seed"]))
 
     # Create destination folder.
-    Path(config['destination_folder']).mkdir(parents=True, exist_ok=True)
+    destination_folder = config["tensor_destination_folder"]
+    Path(destination_folder).mkdir(parents=True, exist_ok=True)
 
     # Seen objects.
     for mode in ["train", "val", "test"]:
@@ -78,7 +79,7 @@ def main(argv):
         torch.save(
             tensor_data,
             os.path.join(
-                config["destination_folder"],
+                destination_folder,
                 f"consor_{date_time_stamp}_seen_objects_{mode}.pt"
             ),
         )
@@ -103,7 +104,7 @@ def main(argv):
     torch.save(
         tensor_data,
         os.path.join(
-            config["destination_folder"],
+            destination_folder,
             f"consor_{date_time_stamp}_unseen_objects_test.pt"
         ),
     )

@@ -186,7 +186,7 @@ def main(argv):
         data_result = {
             "data_key": example_key,
             "objects": example["objects"],
-            "schema": schema_gt,
+            "rule": schema_gt,
             "init_distance_from_goal": example["edit_distance"],
             "sed": pred_goal_ed,
         }

@@ -2,21 +2,21 @@ SEED: 2007066439
 
 DATA:
   objects_list: ./data/objects_annotated.csv
-  json_data_folder: /home/kartik/Documents/datasets/consor_data
-  json_seen_objects_timestamp: '2023_08_19_15_54_37'
+  json_data_folder: ./files/data/json
+  json_seen_objects_timestamp: '2023_08_19_15_52_19'
   schemas: class,ooe,affordance,utility
-  destination_folder: /home/kartik/Documents/datasets/consor_data/matrix
+  destination_folder: files/data/matrix
 
 MODEL:
   learning_rate: 1.0e-2
   lambda_reg: 1.0e-2
   hidden_dimension: 3
-  object_combinations_file: /home/kartik/Documents/datasets/consor_data/matrix/object_combinations_2023_08_19_15_54_37_seen-objs.txt
-  train_ranking_matrix_file: /home/kartik/Documents/datasets/consor_data/matrix/consor_ranking_matrix_train_2023_08_19_15_54_37_seen-objs.npy
-  val_ranking_matrix_file: /home/kartik/Documents/datasets/consor_data/matrix/consor_ranking_matrix_val_2023_08_19_15_54_37_seen-objs.npy
-  log_folder: ./logs
+  object_combinations_file: ./files/data/matrix/object_combinations_2023_08_19_15_52_19_seen-objs.txt
+  train_ranking_matrix_file: ./files/data/matrix/consor_ranking_matrix_train_2023_08_19_15_52_19_seen-objs.npy
+  val_ranking_matrix_file: ./files/data/matrix/consor_ranking_matrix_val_2023_08_19_15_52_19_seen-objs.npy
+  log_folder: ./files/abdo_checkpoint/
 
 EVAL:
-  ratings_matrix_fitted: ./logs/abdoCf_2023_10_15_17_30_28/abdoCf-weights-2023_10_15_17_30_28.npz
-  test_data_json: /home/kartik/Documents/datasets/consor_data/consor_2023_08_19_15_54_37_seen_objects_test.json
+  ratings_matrix_fitted: ./files/abdo_checkpoint/abdoCf_2023_11_09_17_14_52/abdoCf-weights-2023_11_09_17_14_52.npz
+  test_data_json: ./files/data/json/consor_2023_08_19_15_52_19_seen_objects_test.json
   results_folder: ./logs

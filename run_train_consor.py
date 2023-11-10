@@ -148,7 +148,7 @@ def main(argv):
     # Save checkpoint for the three highest success rates.
     val_checkpoint_successrate = ModelCheckpoint(
         dirpath=logfolder,
-        filename=f"-{date_time_stamp}" + "-{epoch}-{step}-{success_rate:4.2f}.pth",
+        filename=f"{date_time_stamp}" + "-{epoch}-{step}-{success_rate:4.2f}.pth",
         monitor="success_rate",
         mode="max",
         save_top_k=3,
