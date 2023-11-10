@@ -2,7 +2,6 @@
 
 import os
 import json
-from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -54,7 +53,7 @@ def _increment_ranking_matrix(
         for obj_1 in object_set_1:
             for obj_2 in object_set_2:
                 row_id = objcomb2row(obj_1, obj_2)
-                matrix[row_id, column_id] = 0
+                matrix[row_id, column_id] = 1
 
 
 def generate_ranking_matrix(json_examples, schemas_list):
